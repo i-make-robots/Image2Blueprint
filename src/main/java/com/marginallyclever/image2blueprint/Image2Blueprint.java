@@ -1,8 +1,7 @@
-package com.marginallyclever;
+package com.marginallyclever.image2blueprint;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.awt.image.WritableRaster;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;

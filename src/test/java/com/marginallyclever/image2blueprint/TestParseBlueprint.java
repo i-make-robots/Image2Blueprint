@@ -1,4 +1,4 @@
-package com.marginallyclever;
+package com.marginallyclever.image2blueprint;
 
 import org.junit.jupiter.api.Test;
 
