@@ -15,13 +15,14 @@ Where
 
 ### Input
 
-The input image should be a any image file ImageIO can read.  This includes PNG, JPEG, BMP, and GIF files.
+The input image should be a any image file ImageIO can read.  
+This includes **PNG, JPEG, BMP, GIF, PIO,** and **WEBP** files.
 
 ### Output 
 The output will be to stdout. Redirect it to a file like so:
 
 ```bash
-java -jar Image2Blueprint [-d] input.png > output.txt
+java -jar Image2Blueprint-1.0-SNAPSHOT.jar [-d] input.png > output.txt
 ```
 
 The output file will contain a Factorio blueprint string.  You can import this string into Factorio by copying it to your clipboard and using the import function in the blueprint library.
