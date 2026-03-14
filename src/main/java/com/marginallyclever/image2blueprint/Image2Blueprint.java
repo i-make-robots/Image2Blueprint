@@ -2,6 +2,9 @@ package com.marginallyclever.image2blueprint;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,16 +56,20 @@ class Image2Blueprint {
 
     public static void main(String[] args) {
         boolean addDither=false;
+        boolean quietMode=false;
 
         // load arg[args.length-1] using imageIO
         if (args.length < 1) {
-            System.out.println("Usage: java Scratch <imagefile>");
+            System.out.println("Usage: java -jar Image2Blueprint.jar [-q] [-d] <imagefile>");
             return;
         }
         for( String arg : args ) {
             if(arg.startsWith("-d")) {
                 addDither = true;
                 System.out.println("Dithering enabled.");
+            }
+            if(arg.startsWith("-q")) {
+                quietMode = true;
             }
         }
 
@@ -76,7 +83,7 @@ class Image2Blueprint {
         }
         int width = img.getWidth();
         int height = img.getHeight();
-        System.out.println("Size:" + width + "x" + height);
+        if(!quietMode) System.out.println("Size:" + width + "x" + height);
 
         // get the raster, which lets us access all the pixel data, including alpha channel.
         var raster = img.getRaster();
@@ -153,11 +160,13 @@ class Image2Blueprint {
         //System.out.println(sb.toString());
         String result = zipAndBase64Encode(sb);
 
-        System.out.println("Encoded string:");
+        // Outputs encoded result to console or file with error handling
+        if(!quietMode) System.out.println("Encoded string:");
         System.out.println("0" + result);
 
         // save the preview image
         try {
+            if(!quietMode) System.out.println("Saving preview image to after.png");
             javax.imageio.ImageIO.write(after, "PNG", new java.io.File("after.png"));
         } catch (java.io.IOException e) {
             e.printStackTrace();

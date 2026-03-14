@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 1.0
+### Added
+- More README
+- quiet mode with `-q` flag.
+
 ## 1.0-SNAPSHOT
 ### Added
 - Initial prerelease of Image2Blueprint v1.
