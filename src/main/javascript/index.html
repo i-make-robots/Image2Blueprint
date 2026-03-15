@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image2Blueprint — Factorio Pyanadon Tile Converter</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+        :root {
+            --bg:       #1a1612;
+            --panel:    #22201a;
+            --border:   #4a3f28;
+            --border2:  #6b5a3a;
+            --accent:   #e8a020;
+            --accent2:  #f0c060;
+            --green:    #5aad3a;
+            --text:     #d4c4a0;
+            --text-dim: #8a7a60;
+            --inset:    #141210;
+            --shadow:   rgba(0,0,0,0.7);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh;
+            padding: 24px 16px 40px;
+            background-image:
+                    radial-gradient(ellipse at 20% 0%, rgba(232,160,32,0.06) 0%, transparent 60%),
+                    repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(74,63,40,0.15) 31px, rgba(74,63,40,0.15) 32px),
+                    repeating-linear-gradient(90deg, transparent, transparent 31px, rgba(74,63,40,0.15) 31px, rgba(74,63,40,0.15) 32px);
+        }
+
+        .wrap {
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+            position: relative;
+        }
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: -4px; left: 50%; transform: translateX(-50%);
+            width: 200px; height: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 12px var(--accent);
+        }
+
+        h1 {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: clamp(1.4rem, 4vw, 2.2rem);
+            color: var(--accent);
+            text-shadow: 0 0 20px rgba(232,160,32,0.5), 2px 2px 0 #000;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .subtitle {
+            margin-top: 6px;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        /* PANEL */
+        .panel {
+            background: var(--panel);
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+            position: relative;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 20px var(--shadow);
+        }
+        .panel-label {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.62rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel-label::before {
+            content: '';
+            display: inline-block;
+            width: 8px; height: 8px;
+            background: var(--accent);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        /* UPLOAD ZONE */
+        .upload-zone {
+            border: 2px dashed var(--border2);
+            border-radius: 4px;
+            padding: 28px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            position: relative;
+            background: var(--inset);
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(232,160,32,0.05);
+        }
+        .upload-zone input[type=file] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .upload-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+        .upload-hint {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+        .upload-hint strong { color: var(--accent2); }
+        .file-name {
+            margin-top: 10px;
+            font-size: 0.78rem;
+            color: var(--green);
+            display: none;
+        }
+
+        /* CONTROLS ROW */
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        /* WIDTH INPUT */
+        .width-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .width-group label {
+            font-size: 0.62rem;
+            color: var(--text-dim);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .width-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .width-input {
+            width: 72px;
+            background: var(--inset);
+            border: 2px solid var(--border2);
+            border-radius: 2px;
+            color: var(--accent2);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.9rem;
+            padding: 5px 8px;
+            outline: none;
+            text-align: right;
+            box-shadow: inset 1px 1px 4px rgba(0,0,0,0.5);
+            transition: border-color 0.15s;
+            -moz-appearance: textfield;
+        }
+        .width-input::-webkit-inner-spin-button,
+        .width-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+        .width-input:focus { border-color: var(--accent); }
+        .width-unit {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+        .width-hint {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 0.05em;
+        }
+        .width-hint .dim-info {
+            color: var(--accent);
+            margin-left: 4px;
+        }
+
+        /* TOGGLE */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .toggle-wrap input { display: none; }
+        .toggle-track {
+            width: 44px; height: 22px;
+            background: var(--inset);
+            border: 2px solid var(--border2);
+            border-radius: 2px;
+            position: relative;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .toggle-wrap input:checked + .toggle-track {
+            border-color: var(--accent);
+            background: rgba(232,160,32,0.15);
+        }
+        .toggle-thumb {
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 14px; height: 14px;
+            background: var(--border2);
+            transition: transform 0.2s, background 0.2s;
+            clip-path: polygon(0 0, 85% 0, 100% 15%, 100% 100%, 15% 100%, 0 85%);
+        }
+        .toggle-wrap input:checked + .toggle-track .toggle-thumb {
+            transform: translateX(22px);
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+        .toggle-label {
+            font-size: 0.78rem;
+            color: var(--text);
+        }
+        .toggle-label small { color: var(--text-dim); display: block; font-size: 0.68rem; }
+
+        /* RUN BUTTON */
+        .run-btn {
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            font-size: 0.78rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            background: var(--accent);
+            color: #1a1000;
+            border: none;
+            padding: 10px 28px;
+            cursor: pointer;
+            clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+            transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .run-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.3s;
+        }
+        .run-btn:hover::before { left: 100%; }
+        .run-btn:hover {
+            background: var(--accent2);
+            box-shadow: 0 0 20px rgba(232,160,32,0.6);
+        }
+        .run-btn:active { transform: scale(0.97); }
+        .run-btn:disabled {
+            background: var(--border);
+            color: var(--text-dim);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .run-btn.running {
+            background: var(--border2);
+            color: var(--accent);
+            animation: btn-pulse 1s ease-in-out infinite;
+        }
+        @keyframes btn-pulse { 0%,100%{box-shadow:0 0 8px rgba(232,160,32,0.3)} 50%{box-shadow:0 0 20px rgba(232,160,32,0.7)} }
+
+        /* PREVIEW AREA */
+        .preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        @media (max-width: 580px) { .preview-grid { grid-template-columns: 1fr; } }
+
+        .preview-box {
+            background: var(--inset);
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            padding: 10px;
+            min-height: 160px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .preview-box-label {
+            font-size: 0.62rem;
+            color: var(--text-dim);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            align-self: flex-start;
+        }
+        .preview-box canvas, .preview-box img {
+            max-width: 100%;
+            max-height: 260px;
+            object-fit: contain;
+            image-rendering: pixelated;
+            border-radius: 2px;
+        }
+        .preview-placeholder {
+            color: var(--text-dim);
+            font-size: 0.72rem;
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        /* OUTPUT FIELD */
+        .output-field {
+            width: 100%;
+            min-height: 90px;
+            max-height: 160px;
+            background: var(--inset);
+            border: 2px inset var(--border);
+            border-color: #0d0c0a #3a3020 #3a3020 #0d0c0a;
+            color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.72rem;
+            padding: 10px 12px;
+            resize: vertical;
+            border-radius: 2px;
+            outline: none;
+            line-height: 1.5;
+            word-break: break-all;
+            box-shadow: inset 2px 2px 6px rgba(0,0,0,0.6);
+        }
+
+        .copy-btn {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--border2);
+            padding: 5px 14px;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: background 0.15s, color 0.15s;
+            margin-top: 8px;
+            align-self: flex-end;
+        }
+        .copy-btn:hover { background: rgba(232,160,32,0.15); }
+        .copy-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .output-wrap { display: flex; flex-direction: column; }
+
+        /* STATUS */
+        .status-bar {
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+            min-height: 1.2em;
+            letter-spacing: 0.05em;
+        }
+        .status-bar.ok { color: var(--green); }
+        .status-bar.err { color: #e05050; }
+        .status-bar.info { color: var(--accent); }
+
+        /* color palette preview */
+        .palette-row {
+            display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px;
+        }
+        .swatch {
+            width: 18px; height: 18px; border-radius: 2px;
+            border: 1px solid rgba(255,255,255,0.1);
+            title: '';
+        }
+
+        /* corner accents */
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: -1px; right: -1px;
+            border-top: 12px solid var(--border2);
+            border-left: 12px solid transparent;
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header>
+        <h1>Image2Blueprint</h1>
+        <div class="subtitle">Factorio · Pyanodons · Refined Concrete · Tile Converter</div>
+    </header>
+
+    <!-- INPUT -->
+    <div class="panel">
+        <div class="panel-label">Input Image</div>
+        <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept="image/*">
+            <div class="upload-icon">🗂️</div>
+            <div class="upload-hint">
+                <strong>Drop image here</strong> or click to browse<br>
+                PNG · JPEG · BMP · GIF · WEBP supported
+            </div>
+            <div class="file-name" id="fileName"></div>
+        </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="panel">
+        <div class="panel-label">Options &amp; Run</div>
+        <div class="controls-row">
+            <div class="width-group">
+                <label for="widthInput">Output width</label>
+                <div class="width-row">
+                    <input type="number" class="width-input" id="widthInput" value="128" min="1" max="2048">
+                    <span class="width-unit">px</span>
+                </div>
+                <div class="width-hint">Height auto-scaled · <span id="dimInfo" class="dim-info">—</span></div>
+            </div>
+            <label class="toggle-wrap">
+                <input type="checkbox" id="ditherToggle" checked>
+                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                <span class="toggle-label">
+          Floyd-Steinberg Dithering
+          <small>Reduces color banding</small>
+        </span>
+            </label>
+            <button class="run-btn" id="runBtn" disabled>▶ Generate Blueprint</button>
+        </div>
+        <div class="palette-row" id="paletteRow" title="Pyanodon refined concrete palette"></div>
+    </div>
+
+    <!-- PREVIEWS -->
+    <div class="panel">
+        <div class="panel-label">Preview</div>
+        <div class="preview-grid">
+            <div class="preview-box" id="beforeBox">
+                <div class="preview-box-label">Before</div>
+                <div class="preview-placeholder">No image loaded</div>
+            </div>
+            <div class="preview-box" id="afterBox">
+                <div class="preview-box-label">After (quantized)</div>
+                <div class="preview-placeholder">Run to generate</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="panel">
+        <div class="panel-label">Blueprint String Output</div>
+        <div class="output-wrap">
+            <textarea class="output-field" id="outputField" readonly placeholder="Blueprint string will appear here…"></textarea>
+            <button class="copy-btn" id="copyBtn" disabled>⧉ Copy to Clipboard</button>
+        </div>
+        <div class="status-bar" id="statusBar">Ready. Load an image to begin.</div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-label">Credits</div>
+        <div class="output-wrap">
+            <p>Created by <a href="https://github.com/i-make-robots">I-make-robots</a> 2025</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script>
+    // ─── PALETTE ────────────────────────────────────────────────────────────────
+    // Pyanodon refined concrete + white lime tile + brick path
+    // Colors as [R,G,B], entity names for blueprint
+    const PALETTE = [
+      { name: 'refined-concrete',               r:105, g:105, b:105 }, // gray
+      { name: 'refined-concrete-red',           r:156, g: 66, b: 56 },
+      { name: 'refined-concrete-orange',        r:193, g:109, b: 41 },
+      { name: 'refined-concrete-yellow',        r:190, g:176, b: 68 },
+      { name: 'refined-concrete-green',         r: 85, g:127, b: 56 },
+      { name: 'refined-concrete-cyan',          r: 65, g:152, b:156 },
+      { name: 'refined-concrete-blue',          r: 56, g: 84, b:156 },
+      { name: 'refined-concrete-purple',        r:100, g: 56, b:156 },
+      { name: 'refined-concrete-pink',          r:183, g: 91, b:147 },
+      { name: 'refined-concrete-black',         r: 25, g: 25, b: 25 },
+      { name: 'refined-concrete-brown',         r:112, g: 68, b: 35 },
+      { name: 'refined-concrete-acid',          r:133, g:191, b: 42 },
+      { name: 'refined-concrete-white',         r:210, g:210, b:210 },
+      { name: 'refined-hazard-concrete-left',   r:204, g:178, b: 40 }, // hazard (yellow+black)
+      { name: 'white-refined-concrete',         r:235, g:235, b:235 }, // near-white
+      { name: 'brick-path',                     r:157, g:105, b: 70 }, // brick
+    ];
+
+    // Render palette swatches
+    const paletteRow = document.getElementById('paletteRow');
+    PALETTE.forEach(c => {
+      const s = document.createElement('div');
+      s.className = 'swatch';
+      s.style.background = `rgb(${c.r},${c.g},${c.b})`;
+      s.title = c.name;
+      paletteRow.appendChild(s);
+    });
+
+    // ─── STATE ────────────────────────────────────────────────────────────────────
+    let loadedImage = null;
+
+    // ─── UI ELEMENTS ──────────────────────────────────────────────────────────────
+    const fileInput   = document.getElementById('fileInput');
+    const uploadZone  = document.getElementById('uploadZone');
+    const fileNameEl  = document.getElementById('fileName');
+    const ditherToggle= document.getElementById('ditherToggle');
+    const widthInput  = document.getElementById('widthInput');
+    const dimInfo     = document.getElementById('dimInfo');
+    const runBtn      = document.getElementById('runBtn');
+    const beforeBox   = document.getElementById('beforeBox');
+    const afterBox    = document.getElementById('afterBox');
+    const outputField = document.getElementById('outputField');
+    const copyBtn     = document.getElementById('copyBtn');
+    const statusBar   = document.getElementById('statusBar');
+
+    function updateDimInfo() {
+      if (!loadedImage) { dimInfo.textContent = '—'; return; }
+      const w = parseInt(widthInput.value) || 128;
+      const h = Math.round(loadedImage.naturalHeight * w / loadedImage.naturalWidth);
+      const cw = Math.ceil(w / 32);
+      const ch = Math.ceil(h / 32);
+      dimInfo.textContent = `→ ${w}×${h} px · ${cw}×${ch} chunks`;
+    }
+    widthInput.addEventListener('input', updateDimInfo);
+
+    // ─── FILE LOADING ─────────────────────────────────────────────────────────────
+    function handleFile(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        setStatus('Please load a valid image file.', 'err'); return;
+      }
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        loadedImage = img;
+        fileNameEl.textContent = `✓ ${file.name} (${img.naturalWidth}×${img.naturalHeight})`;
+        fileNameEl.style.display = 'block';
+        renderBeforePreview(img);
+        updateDimInfo();
+        runBtn.disabled = false;
+        outputField.value = '';
+        copyBtn.disabled = true;
+        clearAfterPreview();
+        setStatus(`Loaded: ${file.name}`, 'ok');
+      };
+      img.onerror = () => setStatus('Failed to load image.', 'err');
+      img.src = url;
+    }
+
+    fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    function renderBeforePreview(img) {
+      beforeBox.innerHTML = '<div class="preview-box-label">Before</div>';
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      beforeBox.appendChild(canvas);
+    }
+
+    function clearAfterPreview() {
+      afterBox.innerHTML = '<div class="preview-box-label">After (quantized)</div><div class="preview-placeholder">Run to generate</div>';
+    }
+
+    // ─── COLOR MATH ───────────────────────────────────────────────────────────────
+    function colorDist(r1,g1,b1,r2,g2,b2) {
+      const dr=r1-r2, dg=g1-g2, db=b1-b2;
+      return dr*dr + dg*dg + db*db;
+    }
+
+    function nearestPalette(r,g,b) {
+      let best=0, bestD=Infinity;
+      for(let i=0;i<PALETTE.length;i++){
+        const p=PALETTE[i];
+        const d=colorDist(r,g,b,p.r,p.g,p.b);
+        if(d<bestD){bestD=d;best=i;}
+      }
+      return best;
+    }
+
+    function clamp(v){return Math.max(0,Math.min(255,v));}
+
+    // ─── MAIN CONVERSION ──────────────────────────────────────────────────────────
+    runBtn.addEventListener('click', () => {
+      if (!loadedImage) return;
+      runBtn.disabled = true;
+      runBtn.classList.add('running');
+      runBtn.textContent = '⟳ Processing…';
+      setStatus('Quantizing image…', 'info');
+
+      // slight delay so UI updates
+      setTimeout(() => {
+        try {
+          const targetW = Math.max(1, Math.min(2048, parseInt(widthInput.value) || 128));
+          const result = convert(loadedImage, ditherToggle.checked, targetW);
+          renderAfterPreview(result.canvas);
+          const bpStr = buildBlueprint(result.tileMap, result.width, result.height);
+          outputField.value = bpStr;
+          copyBtn.disabled = false;
+          setStatus(`Done! ${result.tileCount} tiles placed. Blueprint string: ${bpStr.length} chars.`, 'ok');
+        } catch(err) {
+          setStatus('Error: ' + err.message, 'err');
+          console.error(err);
+        }
+        runBtn.disabled = false;
+        runBtn.classList.remove('running');
+        runBtn.textContent = '▶ Generate Blueprint';
+      }, 30);
+    });
+
+    function convert(img, dither, targetW) {
+      // Scale image down to targetW wide, preserving aspect ratio
+      const srcW = img.naturalWidth, srcH = img.naturalHeight;
+      const w = targetW;
+      const h = Math.max(1, Math.round(srcH * w / srcW));
+
+      const src = document.createElement('canvas');
+      src.width = w; src.height = h;
+      const ctx = src.getContext('2d');
+      // Use smooth scaling for downsampling (better color averaging)
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, w, h);
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      // Work in float buffers for dithering
+      const R = new Float32Array(w*h);
+      const G = new Float32Array(w*h);
+      const B = new Float32Array(w*h);
+      const A = new Float32Array(w*h);
+
+      for(let i=0;i<w*h;i++){
+        R[i]=data[i*4];
+        G[i]=data[i*4+1];
+        B[i]=data[i*4+2];
+        A[i]=data[i*4+3];
+      }
+
+      // tileMap[y][x] = palette index or -1 (transparent)
+      const tileMap = [];
+      let tileCount = 0;
+
+      // Output canvas
+      const out = document.createElement('canvas');
+      out.width = w; out.height = h;
+      const octx = out.getContext('2d');
+      const outData = octx.createImageData(w, h);
+      const od = outData.data;
+
+      for(let y=0;y<h;y++){
+        tileMap[y] = [];
+        for(let x=0;x<w;x++){
+          const idx = y*w+x;
+          const alpha = A[idx];
+          if(alpha < 128) {
+            // transparent — leave as transparent in output
+            tileMap[y][x] = -1;
+            od[idx*4+3] = 0;
+            continue;
+          }
+          const r=clamp(Math.round(R[idx]));
+          const g=clamp(Math.round(G[idx]));
+          const b=clamp(Math.round(B[idx]));
+
+          const pi = nearestPalette(r,g,b);
+          const pc = PALETTE[pi];
+          tileMap[y][x] = pi;
+          tileCount++;
+
+          od[idx*4]  = pc.r;
+          od[idx*4+1]= pc.g;
+          od[idx*4+2]= pc.b;
+          od[idx*4+3]= 255;
+
+          if(dither){
+            // Floyd-Steinberg error diffusion
+            const er = r - pc.r;
+            const eg = g - pc.g;
+            const eb = b - pc.b;
+
+            if(x+1 < w) {
+              const ni=(y)*w+(x+1);
+              R[ni]+=er*7/16; G[ni]+=eg*7/16; B[ni]+=eb*7/16;
+            }
+            if(y+1 < h){
+              if(x-1 >= 0){
+                const ni=(y+1)*w+(x-1);
+                R[ni]+=er*3/16; G[ni]+=eg*3/16; B[ni]+=eb*3/16;
+              }
+              {
+                const ni=(y+1)*w+x;
+                R[ni]+=er*5/16; G[ni]+=eg*5/16; B[ni]+=eb*5/16;
+              }
+              if(x+1 < w){
+                const ni=(y+1)*w+(x+1);
+                R[ni]+=er*1/16; G[ni]+=eg*1/16; B[ni]+=eb*1/16;
+              }
+            }
+          }
+        }
+      }
+
+      octx.putImageData(outData, 0, 0);
+      return { canvas: out, tileMap, width: w, height: h, tileCount };
+    }
+
+    function renderAfterPreview(canvas) {
+      afterBox.innerHTML = '<div class="preview-box-label">After (quantized)</div>';
+      afterBox.appendChild(canvas);
+    }
+
+    // ─── BLUEPRINT BUILDER ────────────────────────────────────────────────────────
+    // Factorio blueprint string format:
+    // 0 + base64(zlib_deflate(JSON))
+    // JSON structure for a tile-only blueprint
+
+    function buildBlueprint(tileMap, w, h) {
+      const tiles = [];
+      for(let y=0;y<h;y++){
+        for(let x=0;x<w;x++){
+          const pi = tileMap[y][x];
+          if(pi === -1) continue;
+          tiles.push({
+            position: { x: x, y: y },
+            name: PALETTE[pi].name
+          });
+        }
+      }
+
+      const bp = {
+        blueprint: {
+          item: "blueprint",
+          label: "Image2Blueprint",
+          label_color: { r:0.9, g:0.63, b:0.13, a:1.0 },
+          tiles: tiles,
+          entities: [],
+          icons: [{ signal: { type: "item", name: "refined-concrete" }, index: 1 }],
+          snap_to_grid: { x: 1, y: 1 },
+          version: 281474976710656
+        }
+      };
+
+      const json = JSON.stringify(bp);
+      const compressed = pako.deflate(json, { level: 9 });
+      const b64 = btoa(String.fromCharCode(...compressed));
+      return '0' + b64;
+    }
+
+    // ─── COPY ─────────────────────────────────────────────────────────────────────
+    copyBtn.addEventListener('click', () => {
+      if (!outputField.value) return;
+      navigator.clipboard.writeText(outputField.value).then(() => {
+        copyBtn.textContent = '✓ Copied!';
+        setStatus('Blueprint string copied to clipboard.', 'ok');
+        setTimeout(() => { copyBtn.textContent = '⧉ Copy to Clipboard'; }, 2000);
+      });
+    });
+
+    // ─── HELPERS ─────────────────────────────────────────────────────────────────
+    function setStatus(msg, type='') {
+      statusBar.textContent = msg;
+      statusBar.className = 'status-bar' + (type ? ' '+type : '');
+    }
+</script>
+</body>
+</html>

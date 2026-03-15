@@ -52,3 +52,7 @@ It does not take into account the ground under your blueprint.
 ![image](dog_without.png)
 
 Before, with dithering, without dithering.
+
+### Javascript
+
+A live javascript version of this project is available at ./tree/master/src/mian/javascript/index.html
