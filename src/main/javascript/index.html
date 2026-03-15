@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image2Blueprint — Factorio Pyanadon Tile Converter</title>
+    <title>Image2Blueprint — Factorio Tile Converter</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
 
@@ -467,37 +467,102 @@
         </div>
         <div class="status-bar" id="statusBar">Ready. Load an image to begin.</div>
     </div>
-
+    
     <div class="panel">
         <div class="panel-label">Credits</div>
         <div class="output-wrap">
             <p>Created by <a href="https://github.com/i-make-robots">I-make-robots</a> 2025</p>
         </div>
     </div>
+
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script>
+    // Self-contained zlib (RFC 1950) compressor.
+    // Produces the exact byte stream Factorio's blueprint importer expects:
+    //   2-byte zlib header | DEFLATE-compressed payload | 4-byte Adler-32 checksum
+    // Uses stored (uncompressed) DEFLATE blocks — no LZ77, always correct output.
+    const pako = (() => {
+      function adler32(buf) {
+        let s1 = 1, s2 = 0;
+        for (let i = 0; i < buf.length; i++) {
+          s1 = (s1 + buf[i]) % 65521;
+          s2 = (s2 + s1)    % 65521;
+        }
+        return (s2 << 16) | s1;
+      }
+
+      function zlibDeflateStored(input) {
+        // DEFLATE stored blocks: each block holds up to 65535 bytes uncompressed.
+        const BSIZE = 65535;
+        const blocks = [];
+        for (let i = 0; i < input.length; i += BSIZE) {
+          blocks.push(input.subarray(i, i + BSIZE));
+        }
+        if (blocks.length === 0) blocks.push(new Uint8Array(0));
+
+        // Calculate total output size:
+        // 2 (zlib hdr) + per-block: 1 (BFINAL+BTYPE) + 2 (LEN) + 2 (NLEN) + data + 4 (adler)
+        let size = 2 + 4;
+        for (const b of blocks) size += 5 + b.length;
+
+        const out = new Uint8Array(size);
+        let p = 0;
+
+        // zlib header: CMF=0x78 (deflate, window=32k), FLG makes CMF*256+FLG divisible by 31
+        out[p++] = 0x78;
+        out[p++] = 0x9C; // default compression (0x78*256+0x9C=30876, 30876%31===0 ✓)
+
+        for (let bi = 0; bi < blocks.length; bi++) {
+          const b = blocks[bi];
+          const bfinal = (bi === blocks.length - 1) ? 1 : 0;
+          out[p++] = bfinal; // BFINAL | (BTYPE=00 << 1)
+          const len = b.length;
+          const nlen = (~len) & 0xFFFF;
+          out[p++] = len & 0xFF;
+          out[p++] = (len >> 8) & 0xFF;
+          out[p++] = nlen & 0xFF;
+          out[p++] = (nlen >> 8) & 0xFF;
+          out.set(b, p);
+          p += len;
+        }
+
+        // Adler-32 checksum (big-endian)
+        const a = adler32(input);
+        out[p++] = (a >> 24) & 0xFF;
+        out[p++] = (a >> 16) & 0xFF;
+        out[p++] = (a >>  8) & 0xFF;
+        out[p++] =  a        & 0xFF;
+
+        return out;
+      }
+
+      function deflateAsync(str) {
+        const bytes = new TextEncoder().encode(str);
+        return Promise.resolve(zlibDeflateStored(bytes));
+      }
+
+      return { deflateAsync };
+    })();
+</script>
 <script>
     // ─── PALETTE ────────────────────────────────────────────────────────────────
     // Pyanodon refined concrete + white lime tile + brick path
     // Colors as [R,G,B], entity names for blueprint
     const PALETTE = [
-      { name: 'refined-concrete',               r:105, g:105, b:105 }, // gray
-      { name: 'refined-concrete-red',           r:156, g: 66, b: 56 },
-      { name: 'refined-concrete-orange',        r:193, g:109, b: 41 },
-      { name: 'refined-concrete-yellow',        r:190, g:176, b: 68 },
-      { name: 'refined-concrete-green',         r: 85, g:127, b: 56 },
-      { name: 'refined-concrete-cyan',          r: 65, g:152, b:156 },
-      { name: 'refined-concrete-blue',          r: 56, g: 84, b:156 },
-      { name: 'refined-concrete-purple',        r:100, g: 56, b:156 },
-      { name: 'refined-concrete-pink',          r:183, g: 91, b:147 },
-      { name: 'refined-concrete-black',         r: 25, g: 25, b: 25 },
-      { name: 'refined-concrete-brown',         r:112, g: 68, b: 35 },
-      { name: 'refined-concrete-acid',          r:133, g:191, b: 42 },
-      { name: 'refined-concrete-white',         r:210, g:210, b:210 },
-      { name: 'refined-hazard-concrete-left',   r:204, g:178, b: 40 }, // hazard (yellow+black)
-      { name: 'white-refined-concrete',         r:235, g:235, b:235 }, // near-white
-      { name: 'brick-path',                     r:157, g:105, b: 70 }, // brick
+      { name: 'lab-white',               r:0xFF, g:0xFF, b:0xFF },
+      { name: 'stone-path',              r:0x52, g:0x51, b:0x4A },
+      { name: 'refined-concrete',        r:0x31, g:0x31, b:0x29 },
+      { name: 'black-refined-concrete',  r:0x00, g:0x00, b:0x00 },
+      { name: 'yellow-refined-concrete', r:0xD6, g:0xAA, b:0x10 },
+      { name: 'brown-refined-concrete',  r:0x4A, g:0x1C, b:0x00 },
+      { name: 'acid-refined-concrete',   r:0x8C, g:0xC2, b:0x29 },
+      { name: 'orange-refined-concrete', r:0xDE, g:0x7D, b:0x21 },
+      { name: 'green-refined-concrete',  r:0x10, g:0xC2, b:0x29 },
+      { name: 'red-refined-concrete',    r:0xCE, g:0x04, b:0x00 },
+      { name: 'blue-refined-concrete',   r:0x21, g:0x8A, b:0xE6 },
+      { name: 'purple-refined-concrete', r:0x7B, g:0x1C, b:0xAD },
+      { name: 'cyan-refined-concrete',   r:0x42, g:0xC2, b:0xB5 },
     ];
 
     // Render palette swatches
@@ -609,12 +674,12 @@
       setStatus('Quantizing image…', 'info');
 
       // slight delay so UI updates
-      setTimeout(() => {
+      setTimeout(async () => {
         try {
           const targetW = Math.max(1, Math.min(2048, parseInt(widthInput.value) || 128));
           const result = convert(loadedImage, ditherToggle.checked, targetW);
           renderAfterPreview(result.canvas);
-          const bpStr = buildBlueprint(result.tileMap, result.width, result.height);
+          const bpStr = await buildBlueprint(result.tileMap, result.width, result.height);
           outputField.value = bpStr;
           copyBtn.disabled = false;
           setStatus(`Done! ${result.tileCount} tiles placed. Blueprint string: ${bpStr.length} chars.`, 'ok');
@@ -735,7 +800,7 @@
     // 0 + base64(zlib_deflate(JSON))
     // JSON structure for a tile-only blueprint
 
-    function buildBlueprint(tileMap, w, h) {
+    async function buildBlueprint(tileMap, w, h) {
       const tiles = [];
       for(let y=0;y<h;y++){
         for(let x=0;x<w;x++){
@@ -762,9 +827,14 @@
       };
 
       const json = JSON.stringify(bp);
-      const compressed = pako.deflate(json, { level: 9 });
-      const b64 = btoa(String.fromCharCode(...compressed));
-      return '0' + b64;
+      const compressed = await pako.deflateAsync(json);
+      // btoa on large arrays needs chunking to avoid stack overflow
+      let b64 = '';
+      const CHUNK = 8192;
+      for (let i = 0; i < compressed.length; i += CHUNK) {
+        b64 += String.fromCharCode(...compressed.subarray(i, i + CHUNK));
+      }
+      return '0' + btoa(b64);
     }
 
     // ─── COPY ─────────────────────────────────────────────────────────────────────
