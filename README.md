@@ -55,4 +55,4 @@ Before, with dithering, without dithering.
 
 ### Javascript
 
-A live javascript version of this project is available at [here](https://htmlpreview.github.io/?https://github.com/i-make-robots/Image2Blueprint/blob/master/src/main/javascript/index.html)
+A live javascript version of this project is available [here](https://htmlpreview.github.io/?https://github.com/i-make-robots/Image2Blueprint/blob/master/src/main/javascript/index.html)
