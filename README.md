@@ -56,3 +56,7 @@ Before, with dithering, without dithering.
 ### Javascript
 
 A live javascript version of this project is available [here](https://htmlpreview.github.io/?https://github.com/i-make-robots/Image2Blueprint/blob/master/src/main/javascript/index.html)
+
+## Share
+
+Please share your creations [on Github](https://github.com/i-make-robots/Image2Blueprint/discussions).  I feel very inspired by your creativity.
