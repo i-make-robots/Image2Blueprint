@@ -4,7 +4,7 @@
 ![image](example_b.png)
 ![image](example_c.png)
 
-Image2Blueprint converts basic bitmaps into Factorio blueprints.
+Image2Blueprint is a Java v21 command line app that converts simple bitmaps into Factorio blueprints.
 v1 is designed to work with Pyanadons multi-color refined concrete, white lime tile, and brick path.
 
 Run it from the command line like so:
